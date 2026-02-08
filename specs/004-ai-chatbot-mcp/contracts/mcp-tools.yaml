@@ -1,0 +1,288 @@
+# MCP Tool Specifications
+# These tools are exposed via the MCP server and invoked by the AI agent
+
+tools:
+  add_task:
+    description: Create a new task for the user
+    parameters:
+      type: object
+      required:
+        - user_id
+        - title
+      properties:
+        user_id:
+          type: string
+          description: User ID from JWT (required for isolation)
+        title:
+          type: string
+          maxLength: 255
+          description: Task title
+        description:
+          type: string
+          maxLength: 2000
+          description: Optional task description
+        priority:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+          description: Task priority level
+        due_date:
+          type: string
+          format: date-time
+          description: Optional due date (ISO 8601)
+    returns:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/schemas/Task'
+        error:
+          type: string
+    example:
+      input:
+        user_id: "user_123"
+        title: "Buy groceries"
+        priority: "high"
+        due_date: "2026-01-17T18:00:00Z"
+      output:
+        success: true
+        data:
+          id: "550e8400-e29b-41d4-a716-446655440000"
+          title: "Buy groceries"
+          status: "pending"
+          priority: "high"
+          due_date: "2026-01-17T18:00:00Z"
+
+  list_tasks:
+    description: List tasks for the user with optional filtering
+    parameters:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          description: User ID from JWT (required for isolation)
+        status:
+          type: string
+          enum: [pending, in_progress, completed, all]
+          default: all
+          description: Filter by status
+        priority:
+          type: string
+          enum: [low, medium, high, all]
+          default: all
+          description: Filter by priority
+    returns:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/schemas/Task'
+        error:
+          type: string
+    example:
+      input:
+        user_id: "user_123"
+        status: "pending"
+      output:
+        success: true
+        data:
+          - id: "550e8400-e29b-41d4-a716-446655440000"
+            title: "Buy groceries"
+            status: "pending"
+            priority: "high"
+          - id: "550e8400-e29b-41d4-a716-446655440001"
+            title: "Call dentist"
+            status: "pending"
+            priority: "medium"
+
+  complete_task:
+    description: Mark a task as completed
+    parameters:
+      type: object
+      required:
+        - user_id
+        - task_id
+      properties:
+        user_id:
+          type: string
+          description: User ID from JWT (required for isolation)
+        task_id:
+          type: string
+          format: uuid
+          description: Task ID to complete
+    returns:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/schemas/Task'
+        error:
+          type: string
+    example:
+      input:
+        user_id: "user_123"
+        task_id: "550e8400-e29b-41d4-a716-446655440000"
+      output:
+        success: true
+        data:
+          id: "550e8400-e29b-41d4-a716-446655440000"
+          title: "Buy groceries"
+          status: "completed"
+          priority: "high"
+
+  delete_task:
+    description: Delete a task
+    parameters:
+      type: object
+      required:
+        - user_id
+        - task_id
+      properties:
+        user_id:
+          type: string
+          description: User ID from JWT (required for isolation)
+        task_id:
+          type: string
+          format: uuid
+          description: Task ID to delete
+    returns:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            deleted_id:
+              type: string
+              format: uuid
+            message:
+              type: string
+        error:
+          type: string
+    example:
+      input:
+        user_id: "user_123"
+        task_id: "550e8400-e29b-41d4-a716-446655440000"
+      output:
+        success: true
+        data:
+          deleted_id: "550e8400-e29b-41d4-a716-446655440000"
+          message: "Task deleted successfully"
+
+  update_task:
+    description: Update task properties
+    parameters:
+      type: object
+      required:
+        - user_id
+        - task_id
+      properties:
+        user_id:
+          type: string
+          description: User ID from JWT (required for isolation)
+        task_id:
+          type: string
+          format: uuid
+          description: Task ID to update
+        title:
+          type: string
+          maxLength: 255
+          description: New title (optional)
+        description:
+          type: string
+          maxLength: 2000
+          description: New description (optional)
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+          description: New status (optional)
+        priority:
+          type: string
+          enum: [low, medium, high]
+          description: New priority (optional)
+        due_date:
+          type: string
+          format: date-time
+          description: New due date (optional, null to clear)
+    returns:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/schemas/Task'
+        error:
+          type: string
+    example:
+      input:
+        user_id: "user_123"
+        task_id: "550e8400-e29b-41d4-a716-446655440000"
+        priority: "low"
+        due_date: "2026-01-20T18:00:00Z"
+      output:
+        success: true
+        data:
+          id: "550e8400-e29b-41d4-a716-446655440000"
+          title: "Buy groceries"
+          status: "pending"
+          priority: "low"
+          due_date: "2026-01-20T18:00:00Z"
+
+schemas:
+  Task:
+    type: object
+    properties:
+      id:
+        type: string
+        format: uuid
+      title:
+        type: string
+      description:
+        type: string
+        nullable: true
+      status:
+        type: string
+        enum: [pending, in_progress, completed]
+      priority:
+        type: string
+        enum: [low, medium, high]
+      due_date:
+        type: string
+        format: date-time
+        nullable: true
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+
+error_handling:
+  task_not_found:
+    code: "TASK_NOT_FOUND"
+    message: "Task with the specified ID was not found"
+    example:
+      success: false
+      error: "Task not found: 550e8400-e29b-41d4-a716-446655440000"
+
+  unauthorized_access:
+    code: "UNAUTHORIZED_ACCESS"
+    message: "User does not own this task"
+    example:
+      success: false
+      error: "You don't have access to this task"
+
+  validation_error:
+    code: "VALIDATION_ERROR"
+    message: "Input validation failed"
+    example:
+      success: false
+      error: "Title is required and must be under 255 characters"

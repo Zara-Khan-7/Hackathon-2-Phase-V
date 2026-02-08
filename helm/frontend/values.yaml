@@ -1,0 +1,46 @@
+replicaCount: 2
+
+image:
+  repository: todo-frontend
+  tag: latest
+  pullPolicy: Never
+
+service:
+  type: NodePort
+  port: 3000
+  nodePort: 30000
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+  requests:
+    cpu: 200m
+    memory: 512Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+env:
+  BETTER_AUTH_SECRET: ""
+  DATABASE_URL: ""
+  NEXT_PUBLIC_BACKEND_URL: "http://backend:8000"
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

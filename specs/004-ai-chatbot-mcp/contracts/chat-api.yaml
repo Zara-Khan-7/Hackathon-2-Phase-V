@@ -1,0 +1,170 @@
+openapi: 3.0.3
+info:
+  title: AI-Native Todo Chatbot API
+  description: |
+    Chat endpoint for AI-powered task management.
+    All interactions go through a single stateless endpoint.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.todoapp.com
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/{user_id}/chat:
+    post:
+      operationId: chat
+      summary: Send a chat message
+      description: |
+        Process a natural language message and return AI response.
+        The AI agent interprets intent and invokes MCP tools as needed.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: User ID (must match JWT sub claim)
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              createTask:
+                summary: Create a task
+                value:
+                  message: "Add a task to buy groceries tomorrow"
+              listTasks:
+                summary: List tasks
+                value:
+                  message: "Show me my tasks"
+              completeTask:
+                summary: Complete a task
+                value:
+                  message: "Mark buy groceries as done"
+      responses:
+        '200':
+          description: Successful chat response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Events stream for streaming responses
+        '401':
+          description: Unauthorized - missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - user_id mismatch with JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: User's natural language message
+          example: "Add a task to finish the quarterly report by Friday"
+        stream:
+          type: boolean
+          default: false
+          description: Whether to stream the response via SSE
+
+    ChatResponse:
+      type: object
+      required:
+        - message
+        - tools_invoked
+      properties:
+        message:
+          type: string
+          description: AI-generated response message
+          example: "I've created a task 'finish the quarterly report' with a due date of this Friday. Is there anything else you'd like me to help with?"
+        tools_invoked:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolInvocation'
+          description: List of MCP tools that were invoked
+        conversation_id:
+          type: string
+          format: uuid
+          description: Conversation identifier for reference
+
+    ToolInvocation:
+      type: object
+      required:
+        - tool_name
+        - success
+      properties:
+        tool_name:
+          type: string
+          enum:
+            - add_task
+            - list_tasks
+            - complete_task
+            - delete_task
+            - update_task
+          description: Name of the MCP tool invoked
+        success:
+          type: boolean
+          description: Whether the tool execution succeeded
+        result:
+          type: object
+          description: Tool execution result (structure varies by tool)
+        error:
+          type: string
+          description: Error message if tool failed
+
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Invalid or expired JWT token"
+        code:
+          type: string
+          description: Error code for programmatic handling
+          example: "AUTH_INVALID_TOKEN"

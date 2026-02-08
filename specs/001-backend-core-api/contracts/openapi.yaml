@@ -1,0 +1,362 @@
+openapi: 3.1.0
+info:
+  title: Todo API - Backend Core
+  description: |
+    RESTful API for managing user-owned tasks with JWT authentication.
+    All endpoints require a valid JWT token in the Authorization header.
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/tasks:
+    get:
+      summary: List all tasks for authenticated user
+      description: Returns all tasks owned by the authenticated user.
+      operationId: listTasks
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create a new task
+      description: Creates a new task owned by the authenticated user.
+      operationId: createTask
+      tags:
+        - Tasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/tasks/{task_id}:
+    parameters:
+      - name: task_id
+        in: path
+        required: true
+        description: UUID of the task
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get a specific task
+      description: Returns a single task by ID. Only accessible by the task owner.
+      operationId: getTask
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update a task
+      description: Updates an existing task. Only accessible by the task owner.
+      operationId: updateTask
+      tags:
+        - Tasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      summary: Delete a task
+      description: Permanently deletes a task. Only accessible by the task owner.
+      operationId: deleteTask
+      tags:
+        - Tasks
+      responses:
+        '204':
+          description: Task deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /health:
+    get:
+      summary: Health check
+      description: Returns API health status. No authentication required.
+      operationId: healthCheck
+      tags:
+        - System
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token issued by Better Auth
+
+  schemas:
+    TaskStatus:
+      type: string
+      enum:
+        - pending
+        - in_progress
+        - completed
+      description: Current status of the task
+
+    TaskPriority:
+      type: string
+      enum:
+        - low
+        - medium
+        - high
+      description: Priority level of the task
+
+    TaskCreate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Task title
+          example: Complete project documentation
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Optional task description
+          example: Write comprehensive API documentation
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+          default: pending
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+          default: medium
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional due date (ISO 8601)
+          example: '2026-01-15T10:00:00Z'
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Task title
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Task description
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Due date (ISO 8601)
+
+    TaskResponse:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - priority
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique task identifier
+          example: 550e8400-e29b-41d4-a716-446655440000
+        title:
+          type: string
+          description: Task title
+          example: Complete project documentation
+        description:
+          type: string
+          nullable: true
+          description: Task description
+          example: Write comprehensive API documentation
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Due date (ISO 8601)
+          example: '2026-01-15T10:00:00Z'
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp (UTC)
+          example: '2026-01-09T12:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp (UTC)
+          example: '2026-01-09T12:00:00Z'
+
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Error message
+
+    ValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: integer
+                description: Location of the error
+              msg:
+                type: string
+                description: Error message
+              type:
+                type: string
+                description: Error type
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing_token:
+              value:
+                detail: Missing authentication token
+            invalid_token:
+              value:
+                detail: Invalid or expired token
+
+    Forbidden:
+      description: User is not authorized to access this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: Not authorized to access this resource
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: Task not found
+
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          example:
+            detail:
+              - loc: [body, title]
+                msg: field required
+                type: value_error.missing
+
+tags:
+  - name: Tasks
+    description: Task CRUD operations
+  - name: System
+    description: System health and status endpoints

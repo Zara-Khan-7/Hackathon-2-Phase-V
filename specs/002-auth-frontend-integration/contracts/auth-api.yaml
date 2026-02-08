@@ -1,0 +1,291 @@
+openapi: 3.1.0
+info:
+  title: Better Auth API (Frontend Integration)
+  description: |
+    Authentication endpoints provided by Better Auth on the Next.js frontend.
+    These endpoints are handled by Better Auth's route handlers, not custom code.
+  version: 1.0.0
+  contact:
+    name: Auth API Support
+
+servers:
+  - url: http://localhost:3000/api/auth
+    description: Development server (Better Auth routes)
+
+paths:
+  /sign-up/email:
+    post:
+      summary: Register new user with email/password
+      description: Creates a new user account and automatically signs them in.
+      operationId: signUpEmail
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '200':
+          description: User created and signed in successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+          headers:
+            Set-Cookie:
+              description: Session cookie (httpOnly)
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Email already in use
+
+  /sign-in/email:
+    post:
+      summary: Sign in with email/password
+      description: Authenticates user and creates a session with JWT token.
+      operationId: signInEmail
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+      responses:
+        '200':
+          description: Sign in successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+          headers:
+            Set-Cookie:
+              description: Session cookie (httpOnly)
+              schema:
+                type: string
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Invalid email or password
+
+  /sign-out:
+    post:
+      summary: Sign out current user
+      description: Terminates the session and clears authentication cookies.
+      operationId: signOut
+      tags:
+        - Authentication
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Sign out successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+          headers:
+            Set-Cookie:
+              description: Cleared session cookie
+              schema:
+                type: string
+
+  /session:
+    get:
+      summary: Get current session
+      description: Returns the current user's session information if authenticated.
+      operationId: getSession
+      tags:
+        - Session
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: Session information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not authenticated
+
+  /token:
+    get:
+      summary: Get JWT token for API calls
+      description: Returns a JWT token for authenticating with the FastAPI backend.
+      operationId: getToken
+      tags:
+        - Session
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT bearer token
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Better Auth session cookie
+
+  schemas:
+    SignUpRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: User's password (minimum 8 characters)
+          example: securepassword123
+        name:
+          type: string
+          description: User's display name
+          example: John Doe
+
+    SignInRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          description: User's password
+          example: securepassword123
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        session:
+          $ref: '#/components/schemas/Session'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: User's unique identifier
+          example: 550e8400-e29b-41d4-a716-446655440000
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: user@example.com
+        name:
+          type: string
+          description: User's display name
+          example: John Doe
+        emailVerified:
+          type: boolean
+          description: Whether email is verified
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+          example: '2026-01-09T12:00:00Z'
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Session identifier
+        expiresAt:
+          type: string
+          format: date-time
+          description: Session expiration timestamp
+          example: '2026-01-10T12:00:00Z'
+
+    SessionResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        session:
+          $ref: '#/components/schemas/Session'
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Invalid email format
+
+tags:
+  - name: Authentication
+    description: User registration and sign in/out
+  - name: Session
+    description: Session management and token retrieval

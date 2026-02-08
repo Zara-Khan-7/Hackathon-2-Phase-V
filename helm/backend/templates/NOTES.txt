@@ -1,0 +1,18 @@
+Todo Chatbot Backend has been deployed!
+
+To access the API:
+
+1. Get the service URL:
+   kubectl get svc {{ include "backend.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Port forward for local testing:
+   kubectl port-forward svc/{{ include "backend.fullname" . }} 8000:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+
+3. Access the API at:
+   http://localhost:8000
+
+4. Check health endpoint:
+   curl http://localhost:8000/health
+
+5. View logs:
+   kubectl logs -l app=backend -n {{ .Release.Namespace }}
