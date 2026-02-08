@@ -1,0 +1,361 @@
+# Service API Contracts for Event-Driven Todo Chatbot
+# Version: 1.0.0
+# Date: 2026-02-09
+
+openapi: 3.0.3
+info:
+  title: Event-Driven Todo Chatbot - Service APIs
+  version: 1.0.0
+  description: API contracts for microservices
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.todo-chatbot.example.com
+    description: Production (OKE)
+
+paths:
+  # ============================================
+  # Chat API (Producer) - Enhanced Endpoints
+  # ============================================
+
+  /dapr/subscribe:
+    get:
+      summary: Dapr subscription discovery
+      description: Returns subscriptions for Dapr sidecar
+      operationId: getDaprSubscriptions
+      tags:
+        - Dapr
+      responses:
+        '200':
+          description: List of subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    pubsubname:
+                      type: string
+                    topic:
+                      type: string
+                    route:
+                      type: string
+
+  /api/v1/jobs/reminder-callback:
+    post:
+      summary: Dapr Jobs API callback for reminders
+      description: Called by Dapr when a scheduled reminder job fires
+      operationId: handleReminderCallback
+      tags:
+        - Callbacks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - task_id
+                - user_id
+              properties:
+                task_id:
+                  type: string
+                  format: uuid
+                user_id:
+                  type: string
+      responses:
+        '200':
+          description: Callback processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [SUCCESS, FAILED]
+        '404':
+          description: Task not found
+
+  # ============================================
+  # Notification Service - Consumer Endpoints
+  # ============================================
+
+  /api/v1/handle-reminder:
+    post:
+      summary: Handle reminder event
+      description: Dapr Pub/Sub endpoint for reminders topic
+      operationId: handleReminder
+      tags:
+        - Notification
+      requestBody:
+        required: true
+        content:
+          application/cloudevents+json:
+            schema:
+              $ref: '#/components/schemas/CloudEvent'
+      responses:
+        '200':
+          description: Event processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DaprResponse'
+        '400':
+          description: Invalid event format
+        '500':
+          description: Processing error (will retry)
+
+  /health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /ready:
+    get:
+      summary: Readiness check
+      operationId: readinessCheck
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service ready
+        '503':
+          description: Service not ready
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      operationId: getMetrics
+      tags:
+        - System
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  # ============================================
+  # Recurring Task Service - Consumer Endpoints
+  # ============================================
+
+  /api/v1/handle-completed:
+    post:
+      summary: Handle task.completed event
+      description: Dapr Pub/Sub endpoint for completed recurring tasks
+      operationId: handleTaskCompleted
+      tags:
+        - RecurringTask
+      requestBody:
+        required: true
+        content:
+          application/cloudevents+json:
+            schema:
+              $ref: '#/components/schemas/CloudEvent'
+      responses:
+        '200':
+          description: Event processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DaprResponse'
+
+  /api/v1/ignore:
+    post:
+      summary: Ignore non-completed events
+      description: Dapr route for events that don't match completed filter
+      operationId: ignoreEvent
+      tags:
+        - RecurringTask
+      requestBody:
+        required: true
+        content:
+          application/cloudevents+json:
+            schema:
+              $ref: '#/components/schemas/CloudEvent'
+      responses:
+        '200':
+          description: Event ignored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [DROP]
+
+  # ============================================
+  # Audit Service - Consumer Endpoints
+  # ============================================
+
+  /api/v1/handle-event:
+    post:
+      summary: Handle task event for audit
+      description: Dapr Pub/Sub endpoint for all task events
+      operationId: handleTaskEvent
+      tags:
+        - Audit
+      requestBody:
+        required: true
+        content:
+          application/cloudevents+json:
+            schema:
+              $ref: '#/components/schemas/CloudEvent'
+      responses:
+        '200':
+          description: Event logged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DaprResponse'
+
+  /api/v1/audit-log:
+    get:
+      summary: Query audit log
+      description: Retrieve audit log entries with filtering
+      operationId: getAuditLog
+      tags:
+        - Audit
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+        - name: task_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: event_type
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+      responses:
+        '200':
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogEntry'
+                  total:
+                    type: integer
+
+components:
+  schemas:
+    CloudEvent:
+      type: object
+      required:
+        - id
+        - source
+        - specversion
+        - type
+        - data
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        specversion:
+          type: string
+          enum: ["1.0"]
+        type:
+          type: string
+        datacontenttype:
+          type: string
+          default: "application/json"
+        data:
+          type: object
+
+    DaprResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [SUCCESS, RETRY, DROP, DUPLICATE]
+        message:
+          type: string
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        dependencies:
+          type: object
+          additionalProperties:
+            type: string
+
+    AuditLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        user_id:
+          type: string
+        task_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        payload:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

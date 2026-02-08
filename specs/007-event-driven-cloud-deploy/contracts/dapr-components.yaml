@@ -1,0 +1,151 @@
+# Dapr Component Contracts for Event-Driven Todo Chatbot
+# Version: 1.0.0
+# Date: 2026-02-09
+
+---
+# Pub/Sub Component - Kafka/Redpanda
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+  namespace: todo-app
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+    # Local (Minikube with Redpanda)
+    - name: brokers
+      value: "redpanda.kafka.svc.cluster.local:9092"
+    # Production (Strimzi Kafka)
+    # - name: brokers
+    #   value: "kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+    - name: consumerGroup
+      value: "todo-consumers"
+    - name: authType
+      value: "none"  # Use "sasl" for production with auth
+    - name: maxMessageBytes
+      value: "1048576"  # 1MB
+    - name: consumeRetryInterval
+      value: "1s"
+    - name: version
+      value: "2.8.0"
+
+---
+# State Store Component - Redis
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+  namespace: todo-app
+spec:
+  type: state.redis
+  version: v1
+  metadata:
+    - name: redisHost
+      value: "redis.todo-app.svc.cluster.local:6379"
+    - name: redisPassword
+      secretKeyRef:
+        name: redis-secret
+        key: password
+    - name: actorStateStore
+      value: "true"
+    - name: ttlInSeconds
+      value: "86400"  # 24 hours default TTL
+
+---
+# Secrets Store Component - Kubernetes Secrets
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: secrets
+  namespace: todo-app
+spec:
+  type: secretstores.kubernetes
+  version: v1
+  metadata: []
+
+---
+# Subscription: Notification Service -> reminders topic
+apiVersion: dapr.io/v2alpha1
+kind: Subscription
+metadata:
+  name: notification-reminders-sub
+  namespace: todo-app
+spec:
+  pubsubname: pubsub
+  topic: reminders
+  routes:
+    default: /api/v1/handle-reminder
+  scopes:
+    - notification-service
+
+---
+# Subscription: Audit Service -> task-events topic
+apiVersion: dapr.io/v2alpha1
+kind: Subscription
+metadata:
+  name: audit-taskevents-sub
+  namespace: todo-app
+spec:
+  pubsubname: pubsub
+  topic: task-events
+  routes:
+    default: /api/v1/handle-event
+  scopes:
+    - audit-service
+
+---
+# Subscription: Recurring Task Service -> task-events topic (filtered)
+apiVersion: dapr.io/v2alpha1
+kind: Subscription
+metadata:
+  name: recurring-taskevents-sub
+  namespace: todo-app
+spec:
+  pubsubname: pubsub
+  topic: task-events
+  routes:
+    rules:
+      - match: event.type == "task.completed"
+        path: /api/v1/handle-completed
+    default: /api/v1/ignore
+  scopes:
+    - recurring-task-service
+
+---
+# Dapr Configuration
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: dapr-config
+  namespace: todo-app
+spec:
+  metric:
+    enabled: true
+    port: 9090
+  tracing:
+    samplingRate: "1"
+    otel:
+      endpointAddress: "otel-collector.observability.svc.cluster.local:4317"
+      isSecure: false
+      protocol: grpc
+  features:
+    - name: "Scheduler"
+      enabled: true
+  api:
+    allowed:
+      - name: state
+        version: v1
+        protocol: http
+      - name: publish
+        version: v1
+        protocol: http
+      - name: subscribe
+        version: v1
+        protocol: http
+      - name: secrets
+        version: v1
+        protocol: http
+      - name: jobs
+        version: v1alpha1
+        protocol: http

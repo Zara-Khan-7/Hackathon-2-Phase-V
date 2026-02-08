@@ -1,0 +1,230 @@
+# Event Schema Contracts for Event-Driven Todo Chatbot
+# Version: 1.0.0
+# Date: 2026-02-09
+
+openapi: 3.0.3
+info:
+  title: Event-Driven Todo Chatbot - Event Schemas
+  version: 1.0.0
+  description: CloudEvents-style event schemas for Kafka topics
+
+components:
+  schemas:
+    # Base event envelope
+    BaseEvent:
+      type: object
+      required:
+        - event_id
+        - event_type
+        - timestamp
+        - user_id
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          description: Unique identifier for this event
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        event_type:
+          type: string
+          description: Type of event
+          example: "task.created"
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO8601 timestamp in UTC
+          example: "2026-02-09T10:30:00Z"
+        user_id:
+          type: string
+          description: User ID from JWT token
+          example: "user_abc123"
+
+    # Task entity (embedded in events)
+    TaskPayload:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - user_id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+        priority:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        user_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+          default: []
+        reminder_offset_minutes:
+          type: integer
+          nullable: true
+        remind_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_recurring:
+          type: boolean
+          default: false
+        recurrence_rule:
+          type: string
+          nullable: true
+          example: "DAILY"
+        parent_task_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    # Task Event (published to task-events topic)
+    TaskEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          required:
+            - payload
+          properties:
+            event_type:
+              type: string
+              enum:
+                - task.created
+                - task.updated
+                - task.completed
+                - task.deleted
+            payload:
+              $ref: '#/components/schemas/TaskPayload'
+
+    # Reminder Payload
+    ReminderPayload:
+      type: object
+      required:
+        - task_id
+        - task_title
+        - remind_at
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        task_title:
+          type: string
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+        remind_at:
+          type: string
+          format: date-time
+
+    # Reminder Event (published to reminders topic)
+    ReminderEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          required:
+            - payload
+          properties:
+            event_type:
+              type: string
+              enum:
+                - reminder.scheduled
+                - reminder.triggered
+            payload:
+              $ref: '#/components/schemas/ReminderPayload'
+
+    # Task Update Event (published to task-updates topic for WebSocket sync)
+    TaskUpdateEvent:
+      allOf:
+        - $ref: '#/components/schemas/BaseEvent'
+        - type: object
+          required:
+            - task_id
+            - action
+          properties:
+            event_type:
+              type: string
+              enum:
+                - task.sync
+            task_id:
+              type: string
+              format: uuid
+            action:
+              type: string
+              enum:
+                - created
+                - updated
+                - completed
+                - deleted
+
+# Topic Configurations
+x-kafka-topics:
+  task-events:
+    description: All task CRUD operations
+    producers:
+      - chat-api
+    consumers:
+      - audit-service
+      - recurring-task-service
+    schema: TaskEvent
+    retention: 7d
+    partitions: 3
+    replication: 1
+
+  reminders:
+    description: Scheduled and triggered reminder events
+    producers:
+      - chat-api
+      - dapr-jobs
+    consumers:
+      - notification-service
+    schema: ReminderEvent
+    retention: 1d
+    partitions: 1
+    replication: 1
+
+  task-updates:
+    description: Real-time sync events for WebSocket clients
+    producers:
+      - chat-api
+    consumers:
+      - websocket-gateway (future)
+    schema: TaskUpdateEvent
+    retention: 1h
+    partitions: 1
+    replication: 1
+
+  recurring-tasks:
+    description: Recurring task generation triggers
+    producers:
+      - recurring-task-service
+    consumers:
+      - chat-api
+    schema: TaskEvent
+    retention: 1d
+    partitions: 1
+    replication: 1
