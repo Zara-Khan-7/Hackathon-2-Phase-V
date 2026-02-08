@@ -34,7 +34,7 @@ export const auth = betterAuth({
   },
   trustedOrigins: [
     "http://localhost:3000",
-    "https://hackathon-2-phase-iv-rabeeka10.vercel.app",
+    "https://frontend-sepia-alpha-94.vercel.app",
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
     process.env.NEXT_PUBLIC_APP_URL || "",
   ].filter(Boolean),
