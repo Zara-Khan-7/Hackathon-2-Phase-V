@@ -1,0 +1,24 @@
+# Default values for recurring-task subchart
+replicaCount: 1
+
+image:
+  repository: todo-chatbot/recurring-task-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8002
+
+resources:
+  limits:
+    cpu: 250m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+dapr:
+  enabled: true
+  appId: recurring-task-service
+  appPort: 8002

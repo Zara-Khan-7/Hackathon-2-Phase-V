@@ -1,0 +1,16 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: {{ .Values.pubsub.name }}
+spec:
+  type: {{ .Values.pubsub.type }}
+  version: v1
+  metadata:
+    - name: brokers
+      value: "{{ .Values.pubsub.brokers }}"
+    - name: consumerGroup
+      value: "todo-chatbot"
+    - name: authRequired
+      value: "false"
+    - name: maxMessageBytes
+      value: "1048576"

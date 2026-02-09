@@ -1,0 +1,121 @@
+# Default values for todo-chatbot umbrella chart
+# US6: Local development deployment configuration
+
+global:
+  # Docker registry for images
+  imageRegistry: ""
+  imagePullSecrets: []
+
+  # Dapr configuration
+  dapr:
+    enabled: true
+    pubsubName: pubsub
+    stateStoreName: statestore
+
+  # Database configuration
+  database:
+    host: postgres
+    port: 5432
+    name: todo_db
+    secretName: postgres-secret
+
+  # Redis configuration (for Dapr state store)
+  redis:
+    host: redis
+    port: 6379
+
+  # Kafka configuration
+  kafka:
+    brokers: redpanda.kafka.svc.cluster.local:9092
+
+# Chat API configuration
+chat-api:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: todo-chatbot/chat-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  dapr:
+    enabled: true
+    appId: chat-api
+    appPort: 8000
+
+# Notification Service configuration
+notification:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: todo-chatbot/notification-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8001
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  dapr:
+    enabled: true
+    appId: notification-service
+    appPort: 8001
+
+# Recurring Task Service configuration
+recurring-task:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: todo-chatbot/recurring-task-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8002
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  dapr:
+    enabled: true
+    appId: recurring-task-service
+    appPort: 8002
+
+# Audit Service configuration
+audit:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: todo-chatbot/audit-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8003
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  dapr:
+    enabled: true
+    appId: audit-service
+    appPort: 8003

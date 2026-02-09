@@ -1,0 +1,14 @@
+# Dapr components configuration
+pubsub:
+  name: pubsub
+  type: pubsub.kafka
+  brokers: redpanda.kafka.svc.cluster.local:9092
+
+statestore:
+  name: statestore
+  type: state.redis
+  host: redis.default.svc.cluster.local:6379
+
+secrets:
+  name: secrets
+  type: secretstores.kubernetes

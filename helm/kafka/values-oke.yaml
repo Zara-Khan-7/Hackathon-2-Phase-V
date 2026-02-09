@@ -1,0 +1,96 @@
+# Strimzi Kafka values for Oracle OKE
+# US7: Production Kafka configuration with Strimzi operator
+
+# Using Strimzi for production-grade Kafka on Kubernetes
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: todo-chatbot-kafka
+spec:
+  kafka:
+    version: 3.6.0
+    replicas: 3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      auto.create.topics.enable: true
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      class: oci-bv
+    resources:
+      limits:
+        cpu: 500m
+        memory: 2Gi
+      requests:
+        cpu: 200m
+        memory: 1Gi
+  zookeeper:
+    replicas: 3
+    storage:
+      type: persistent-claim
+      size: 5Gi
+      class: oci-bv
+    resources:
+      limits:
+        cpu: 250m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 512Mi
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+
+---
+# Pre-create topics
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: task-events
+  labels:
+    strimzi.io/cluster: todo-chatbot-kafka
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 604800000  # 7 days
+    segment.bytes: 1073741824
+
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: reminders
+  labels:
+    strimzi.io/cluster: todo-chatbot-kafka
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 604800000
+
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: task-updates
+  labels:
+    strimzi.io/cluster: todo-chatbot-kafka
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 86400000  # 1 day

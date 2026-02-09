@@ -1,0 +1,32 @@
+# Dapr Pub/Sub Component - Kafka/Redpanda
+# Used for event-driven messaging between services
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+  namespace: todo-app
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+    # Local development (Minikube with Redpanda)
+    - name: brokers
+      value: "redpanda.kafka.svc.cluster.local:9092"
+    # Consumer group for todo app
+    - name: consumerGroup
+      value: "todo-consumers"
+    # No auth for local dev
+    - name: authType
+      value: "none"
+    # Message size limit (1MB)
+    - name: maxMessageBytes
+      value: "1048576"
+    # Retry interval for failed deliveries
+    - name: consumeRetryInterval
+      value: "1s"
+    # Kafka protocol version
+    - name: version
+      value: "2.8.0"
+    # Initial offset for new consumers
+    - name: initialOffset
+      value: "oldest"

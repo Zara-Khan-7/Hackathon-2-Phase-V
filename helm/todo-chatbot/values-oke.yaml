@@ -1,0 +1,117 @@
+# Oracle OKE specific values
+# US7: Production configuration for Oracle Cloud Always Free tier
+
+global:
+  imageRegistry: ghcr.io/todo-chatbot
+  imagePullSecrets:
+    - name: ghcr-secret
+
+  dapr:
+    enabled: true
+    pubsubName: pubsub
+    stateStoreName: statestore
+
+  database:
+    host: postgres-postgresql
+    port: 5432
+    name: todo_db
+    secretName: postgres-secret
+
+  redis:
+    host: redis-master
+    port: 6379
+
+  kafka:
+    brokers: redpanda.kafka.svc.cluster.local:9092
+
+# Resource limits for Always Free tier (4 OCPUs, 24GB RAM total)
+# Allocate ~60% to application services
+
+chat-api:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: latest
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 512Mi
+  dapr:
+    enabled: true
+    appId: chat-api
+    appPort: 8000
+
+notification:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 250m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  dapr:
+    enabled: true
+    appId: notification-service
+    appPort: 8001
+
+recurring-task:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 250m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  dapr:
+    enabled: true
+    appId: recurring-task-service
+    appPort: 8002
+
+audit:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 250m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  dapr:
+    enabled: true
+    appId: audit-service
+    appPort: 8003
+
+# Ingress for external access
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: api.todo-chatbot.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: chat-api
+  tls:
+    - secretName: todo-chatbot-tls
+      hosts:
+        - api.todo-chatbot.example.com

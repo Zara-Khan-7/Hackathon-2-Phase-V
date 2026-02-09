@@ -1,442 +1,304 @@
-# Phase IV: Kubernetes Deployment of AI-Native Todo Chatbot
+# Phase V: Event-Driven Cloud Deployment
 
-A modern, AI-powered task management chatbot deployed to Kubernetes using Helm charts, Docker containers, and AI-assisted DevOps operations.
+A modern, AI-powered task management chatbot with event-driven microservices architecture, deployed to Kubernetes using Dapr, Kafka, and Helm.
+
+## Deployment Status
+
+| Environment | Status | Platform |
+|-------------|--------|----------|
+| Local (Minikube) | Verified | Docker + Minikube + Dapr |
+| Cloud (OKE) | Ready for Deploy | Oracle Kubernetes Engine |
 
 ## Live Demo
 
 | Component | URL |
 |-----------|-----|
-| Frontend | https://frontend-murex-eta-83.vercel.app |
-| Backend API | https://rabeeka10-todo-api-backend.hf.space |
-| API Docs | https://rabeeka10-todo-api-backend.hf.space/docs |
+| Frontend | https://frontend-sepia-alpha-94.vercel.app |
+| Backend API | https://zaraa7-phase5.hf.space |
+| API Docs | https://zaraa7-phase5.hf.space/docs |
 
-## What's New in Phase IV
+## What's New in Phase V
 
-Phase IV containerizes and deploys the Phase III AI Chatbot to a **local Kubernetes cluster**:
+Phase V transforms the monolithic backend into an **event-driven microservices architecture**:
 
-- **Docker Containers** - Multi-stage builds for optimized images
-- **Helm Charts** - Templated Kubernetes deployments
-- **Minikube Cluster** - Local Kubernetes environment
-- **Health Probes** - Liveness and readiness checks
-- **Self-Healing** - Automatic pod recovery
-- **AI-Assisted Operations** - kubectl-ai for cluster management
-
-## Phase IV Requirements
-
-### Prerequisites
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Docker Desktop | 4.x+ | Container runtime |
-| Minikube | 1.30+ | Local Kubernetes cluster |
-| kubectl | 1.28+ | Kubernetes CLI |
-| Helm | 3.x+ | Package manager for K8s |
-| kubectl-ai | Latest | AI-assisted kubectl |
-
-### Installation
-
-```bash
-# Install Minikube
-winget install Kubernetes.minikube
-
-# Install Helm
-winget install Helm.Helm
-
-# Install kubectl-ai
-# See: https://github.com/sozercan/kubectl-ai
-```
-
-## Quick Start - Kubernetes Deployment
-
-### 1. Start Minikube Cluster
-
-```bash
-# Start cluster with Docker driver
-minikube start --driver=docker --cpus=2 --memory=3500
-
-# Enable required addons
-minikube addons enable ingress
-minikube addons enable metrics-server
-
-# Create namespace
-kubectl create namespace todo-chatbot
-```
-
-### 2. Build and Load Docker Images
-
-```bash
-# Build images
-docker build -t todo-backend:latest ./backend
-docker build -t todo-frontend:latest ./frontend
-
-# Load into Minikube
-minikube image load todo-backend:latest
-minikube image load todo-frontend:latest
-```
-
-### 3. Create Kubernetes Secrets
-
-```bash
-# Backend secrets
-kubectl create secret generic backend-secret \
-  --from-literal=DATABASE_URL="your-neon-url" \
-  --from-literal=JWT_SECRET="your-jwt-secret" \
-  --from-literal=GROQ_API_KEY="your-groq-key" \
-  -n todo-chatbot
-
-# Frontend secrets
-kubectl create secret generic frontend-secret \
-  --from-literal=DATABASE_URL="your-neon-url" \
-  --from-literal=BETTER_AUTH_SECRET="your-auth-secret" \
-  -n todo-chatbot
-```
-
-### 4. Deploy with Helm
-
-```bash
-# Deploy backend
-helm upgrade --install backend helm/backend -n todo-chatbot
-
-# Deploy frontend
-helm upgrade --install frontend helm/frontend -n todo-chatbot
-
-# Verify pods are running
-kubectl get pods -n todo-chatbot
-```
-
-### 5. Access the Application
-
-```bash
-# Port-forward frontend
-kubectl port-forward -n todo-chatbot svc/frontend 3000:3000
-
-# Port-forward backend (optional)
-kubectl port-forward -n todo-chatbot svc/backend 8000:8000
-
-# Open browser
-open http://localhost:3000
-```
+- **Dapr Building Blocks** - Pub/Sub, State Management, Secrets, Jobs API
+- **Kafka/Redpanda** - Event streaming for task operations
+- **4 Microservices** - chat-api, notification, recurring-task, audit
+- **Helm Charts** - Production-ready Kubernetes deployments
+- **CI/CD Pipelines** - GitHub Actions for OKE deployment
+- **Observability** - Prometheus, Grafana dashboards
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Minikube Cluster                             │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                    todo-chatbot namespace                      │  │
-│  │                                                                │  │
-│  │  ┌─────────────────┐          ┌─────────────────┐             │  │
-│  │  │   Frontend      │          │   Backend       │             │  │
-│  │  │   Deployment    │          │   Deployment    │             │  │
-│  │  │  ┌───────────┐  │          │  ┌───────────┐  │             │  │
-│  │  │  │  Pod 1    │  │          │  │  Pod 1    │  │             │  │
-│  │  │  │ Next.js   │  │   ────▶  │  │ FastAPI   │  │ ────▶ Neon  │  │
-│  │  │  └───────────┘  │          │  │ + AI Agent│  │       PG    │  │
-│  │  │  ┌───────────┐  │          │  └───────────┘  │             │  │
-│  │  │  │  Pod 2    │  │          │  ┌───────────┐  │             │  │
-│  │  │  │ (replica) │  │          │  │  Pod 2    │  │             │  │
-│  │  │  └───────────┘  │          │  │ (replica) │  │             │  │
-│  │  └────────┬────────┘          └────────┬────────┘             │  │
-│  │           │                            │                       │  │
-│  │  ┌────────▼────────┐          ┌────────▼────────┐             │  │
-│  │  │   Service       │          │   Service       │             │  │
-│  │  │  NodePort:30000 │          │  ClusterIP:8000 │             │  │
-│  │  └─────────────────┘          └─────────────────┘             │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                    kubectl port-forward
-                              │
-                              ▼
-                    http://localhost:3000
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Kubernetes Cluster (Minikube/OKE)                    │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                        todo-chatbot namespace                          │  │
+│  │                                                                        │  │
+│  │  ┌─────────────┐     Dapr Pub/Sub      ┌─────────────────────────┐   │  │
+│  │  │  chat-api   │ ──────────────────────▶│    Kafka (Redpanda)     │   │  │
+│  │  │  (FastAPI)  │       task-events      │                         │   │  │
+│  │  │   + Dapr    │       reminders        │  Topics:                │   │  │
+│  │  └─────────────┘                        │  - task-events          │   │  │
+│  │         │                               │  - reminders            │   │  │
+│  │         │ task.created                  │  - task-updates         │   │  │
+│  │         │ task.updated                  └────────────┬────────────┘   │  │
+│  │         │ task.completed                             │                │  │
+│  │         │ task.deleted                               │                │  │
+│  │         ▼                                            ▼                │  │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │  │
+│  │  │                    Consumer Services                              │  │  │
+│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │  │  │
+│  │  │  │notification │  │ recurring-  │  │   audit     │              │  │  │
+│  │  │  │  service    │  │   task      │  │  service    │              │  │  │
+│  │  │  │             │  │  service    │  │             │              │  │  │
+│  │  │  │ reminders   │  │ task.comp.  │  │ task-events │              │  │  │
+│  │  │  └─────────────┘  └─────────────┘  └─────────────┘              │  │  │
+│  │  └─────────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                        │  │
+│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐               │  │
+│  │  │   Redis     │    │ PostgreSQL  │    │  Dapr       │               │  │
+│  │  │ (State)     │    │ (Data)      │    │  Sidecars   │               │  │
+│  │  └─────────────┘    └─────────────┘    └─────────────┘               │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Project Structure
 
 ```
-Phase IV/
-├── backend/                     # Python FastAPI Backend
-│   ├── Dockerfile               # Multi-stage Docker build
-│   ├── app/
-│   │   ├── agent/               # AI Agent (Groq/LLM)
-│   │   ├── mcp/                 # MCP Tools
-│   │   ├── models/              # SQLModel models
-│   │   └── routers/
-│   └── requirements.txt
-│
-├── frontend/                    # Next.js Frontend
-│   ├── Dockerfile               # Multi-stage Docker build
-│   ├── .dockerignore
-│   ├── src/
+Phase V/
+├── services/                    # Microservices
+│   ├── chat-api/                # Main API (FastAPI + Dapr)
 │   │   ├── app/
-│   │   │   ├── (auth)/          # Login/Signup
-│   │   │   └── (protected)/
-│   │   │       ├── dashboard/   # Task dashboard
-│   │   │       └── chat/        # AI Chat interface
-│   │   └── components/
-│   └── package.json
+│   │   │   ├── dapr/            # Dapr client & idempotency
+│   │   │   ├── routers/         # API endpoints
+│   │   │   ├── services/        # Event publishing
+│   │   │   └── schemas/         # Event schemas
+│   │   └── Dockerfile
+│   ├── notification-service/    # Reminder consumer
+│   ├── recurring-task-service/  # Recurring task handler
+│   └── audit-service/           # Event audit logging
 │
-├── helm/                        # Helm Charts
-│   ├── backend/
-│   │   ├── Chart.yaml
-│   │   ├── values.yaml
-│   │   └── templates/
-│   │       ├── deployment.yaml
-│   │       ├── service.yaml
-│   │       ├── configmap.yaml
-│   │       └── _helpers.tpl
-│   └── frontend/
-│       ├── Chart.yaml
-│       ├── values.yaml
-│       └── templates/
-│           ├── deployment.yaml
-│           ├── service.yaml
-│           ├── configmap.yaml
-│           └── _helpers.tpl
+├── dapr/                        # Dapr configuration
+│   ├── components/              # Pub/Sub, State, Secrets
+│   └── config/                  # Runtime configuration
 │
-├── specs/                       # Feature specifications
-│   └── 005-k8s-deployment/
-│       ├── spec.md              # Requirements
-│       ├── plan.md              # Architecture decisions
-│       ├── tasks.md             # Implementation tasks
-│       └── quickstart.md        # Deployment guide
+├── helm/                        # Kubernetes deployments
+│   ├── todo-chatbot/            # Umbrella chart
+│   │   ├── charts/              # Service subcharts
+│   │   ├── values.yaml          # Local config
+│   │   └── values-oke.yaml      # OKE production config
+│   ├── dapr-components/         # Dapr components chart
+│   ├── kafka/                   # Kafka values
+│   └── monitoring/              # Prometheus/Grafana
 │
-└── history/prompts/             # Prompt History Records
-    └── 005-k8s-deployment/
+├── .github/workflows/           # CI/CD pipelines
+│   ├── ci.yaml                  # Build & test
+│   └── cd-oke.yaml              # Deploy to OKE
+│
+├── scripts/                     # Deployment scripts
+│   ├── setup-minikube.sh        # Local cluster setup
+│   ├── deploy-local.sh          # Deploy to Minikube
+│   ├── validate-local.sh        # E2E validation
+│   └── setup-monitoring.sh      # Prometheus/Grafana
+│
+├── docs/                        # Documentation
+│   ├── oke-setup.md             # OKE secrets & config
+│   └── oke-provisioning.md      # Cluster provisioning
+│
+└── specs/007-event-driven-cloud-deploy/
+    ├── spec.md                  # Requirements
+    ├── plan.md                  # Architecture
+    ├── tasks.md                 # 103 implementation tasks
+    └── data-model.md            # Event schemas
 ```
 
-## Helm Chart Configuration
+## Quick Start
 
-### Backend values.yaml
+### Prerequisites
 
-```yaml
-replicaCount: 2
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Docker | 24.x+ | Container runtime |
+| Minikube | 1.32+ | Local Kubernetes |
+| kubectl | 1.28+ | Kubernetes CLI |
+| Helm | 3.13+ | K8s package manager |
+| Dapr CLI | 1.12+ | Dapr installation |
 
-image:
-  repository: todo-backend
-  tag: latest
-  pullPolicy: Never  # Use local images
+### Local Deployment (Minikube)
 
-service:
-  type: ClusterIP
-  port: 8000
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 256Mi
-
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 8000
-  periodSeconds: 30
-
-readinessProbe:
-  httpGet:
-    path: /health
-    port: 8000
-  periodSeconds: 10
-```
-
-### Frontend values.yaml
-
-```yaml
-replicaCount: 2
-
-image:
-  repository: todo-frontend
-  tag: latest
-  pullPolicy: Never
-
-service:
-  type: NodePort
-  port: 3000
-  nodePort: 30000
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 256Mi
-```
-
-## Docker Images
-
-### Backend Dockerfile (Multi-stage)
-
-```dockerfile
-# Build stage
-FROM python:3.11-slim AS builder
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Production stage
-FROM python:3.11-slim
-WORKDIR /app
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY . .
-EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### Frontend Dockerfile (Multi-stage)
-
-```dockerfile
-# Build stage
-FROM node:18-slim AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-# Production stage
-FROM node:18-slim
-WORKDIR /app
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-EXPOSE 3000
-CMD ["node", "server.js"]
-```
-
-## Kubernetes Operations
-
-### Check Deployment Status
+#### Linux/macOS
 
 ```bash
-# View all resources
-kubectl get all -n todo-chatbot
+# 1. Setup Minikube with Dapr and Kafka
+./scripts/setup-minikube.sh
 
-# Check pod logs
-kubectl logs -l app=backend -n todo-chatbot
-kubectl logs -l app=frontend -n todo-chatbot
+# 2. Build Docker images
+docker build -t todo-chatbot/chat-api:latest ./services/chat-api
+docker build -t todo-chatbot/notification-service:latest ./services/notification-service
+docker build -t todo-chatbot/recurring-task-service:latest ./services/recurring-task-service
+docker build -t todo-chatbot/audit-service:latest ./services/audit-service
 
-# Describe deployment
-kubectl describe deployment backend -n todo-chatbot
+# Load images into Minikube
+minikube image load todo-chatbot/chat-api:latest
+minikube image load todo-chatbot/notification-service:latest
+minikube image load todo-chatbot/recurring-task-service:latest
+minikube image load todo-chatbot/audit-service:latest
+
+# 3. Deploy application
+./scripts/deploy-local.sh
+
+# 4. Access the API
+kubectl port-forward svc/todo-chatbot-chat-api 8000:8000 -n todo-chatbot
+open http://localhost:8000/docs
+
+# 5. Validate deployment
+./scripts/validate-local.sh
 ```
 
-### Scaling
+#### Windows (PowerShell)
+
+```powershell
+# 1. Start Minikube (adjust memory based on your system)
+minikube start --driver=docker --cpus=2 --memory=3072
+
+# 2. Install Dapr on Kubernetes
+dapr init -k --wait
+
+# 3. Create namespace and install infrastructure
+kubectl create namespace todo-chatbot
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm install redis bitnami/redis --namespace todo-chatbot --set auth.enabled=false
+helm install postgresql bitnami/postgresql --namespace todo-chatbot --set auth.postgresPassword=postgres
+
+# 4. Build images using Minikube's Docker daemon
+minikube docker-env --shell=powershell | Invoke-Expression
+docker build -t todo-chatbot/chat-api:latest ./services/chat-api
+docker build -t todo-chatbot/notification-service:latest ./services/notification-service
+docker build -t todo-chatbot/recurring-task-service:latest ./services/recurring-task-service
+docker build -t todo-chatbot/audit-service:latest ./services/audit-service
+
+# 5. Apply Dapr components and deploy
+kubectl apply -f dapr/components/pubsub-redis.yaml
+kubectl apply -f dapr/components/statestore-local.yaml
+helm install todo-chatbot ./helm/todo-chatbot --namespace todo-chatbot
+
+# 6. Access the API
+kubectl port-forward svc/todo-chatbot-chat-api 8000:8000 -n todo-chatbot
+# Open http://localhost:8000/docs
+```
+
+### Monitoring Setup
 
 ```bash
-# Scale backend to 3 replicas
-kubectl scale deployment backend --replicas=3 -n todo-chatbot
+# Install Prometheus and Grafana
+./scripts/setup-monitoring.sh
 
-# Or via Helm
-helm upgrade backend helm/backend --set replicaCount=3 -n todo-chatbot
+# Access Grafana dashboard
+kubectl port-forward svc/prometheus-grafana 3000:80 -n monitoring
+open http://localhost:3000  # admin/admin
 ```
 
-### Troubleshooting
+## Event-Driven Features
 
-```bash
-# Check pod events
-kubectl describe pod <pod-name> -n todo-chatbot
+### Task Events (Kafka Topics)
 
-# Execute into pod
-kubectl exec -it <pod-name> -n todo-chatbot -- /bin/sh
+| Topic | Events | Publisher | Consumers |
+|-------|--------|-----------|-----------|
+| `task-events` | created, updated, completed, deleted | chat-api | audit, recurring-task |
+| `reminders` | scheduled, triggered | chat-api | notification |
+| `task-updates` | sync | chat-api | WebSocket (future) |
 
-# Check service endpoints
-kubectl get endpoints -n todo-chatbot
-```
-
-## Health Checks
-
-| Service | Endpoint | Probe Type |
-|---------|----------|------------|
-| Backend | `/health` | HTTP GET |
-| Frontend | `/` | HTTP GET |
-
-### Health Response
+### Event Schema (CloudEvents)
 
 ```json
 {
-  "status": "healthy",
-  "timestamp": "2026-01-25T12:00:00Z"
+  "event_id": "uuid",
+  "event_type": "task.created",
+  "timestamp": "2026-02-09T12:00:00Z",
+  "user_id": "user-123",
+  "source": "chat-api",
+  "specversion": "1.0",
+  "payload": {
+    "id": "task-uuid",
+    "title": "Buy groceries",
+    "status": "pending",
+    "priority": "medium",
+    "due_date": "2026-02-10T18:00:00Z",
+    "is_recurring": true,
+    "recurrence_rule": "weekly"
+  }
 }
 ```
 
-## Features Summary
+## Dapr Building Blocks
 
-### Core Features (Phase II)
-- User Authentication with Better Auth
-- Task CRUD operations
-- Task filtering by status and priority
-- Responsive design
+| Block | Component | Purpose |
+|-------|-----------|---------|
+| Pub/Sub | Kafka/Redpanda (prod) or Redis (local) | Event messaging |
+| State | Redis | Idempotency tracking |
+| Secrets | Kubernetes | Credential management |
+| Jobs | Dapr Scheduler | Reminder scheduling |
+| Service Invocation | Dapr | Cross-service calls |
 
-### AI Chatbot Features (Phase III)
-- Natural Language Task Management
-- Conversational Interface with animations
-- AI-Powered Intent Detection
-- 5 MCP Tools (add, list, complete, update, delete)
-- Conversation Persistence
+> **Note:** For local development with limited resources, Redis Pub/Sub can be used instead of Kafka. The `dapr/components/pubsub-redis.yaml` component is provided for this purpose.
 
-### Kubernetes Features (Phase IV)
-- Multi-stage Docker builds
-- Helm chart templating
-- Health probes (liveness/readiness)
-- Resource limits and requests
-- Pod replication (2 replicas each)
-- Self-healing (automatic pod restart)
-- ConfigMaps for environment variables
-- Secrets for sensitive data
+## CI/CD Pipeline
+
+### GitHub Actions Workflows
+
+1. **CI (ci.yaml)**: Lint → Test → Build → Push to GHCR
+2. **CD (cd-oke.yaml)**: Deploy to Oracle OKE on push to main
+
+### Required Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `OCI_CLI_USER` | OCI user OCID |
+| `OCI_CLI_TENANCY` | OCI tenancy OCID |
+| `OCI_CLI_FINGERPRINT` | API key fingerprint |
+| `OCI_CLI_KEY_CONTENT` | Private key (PEM) |
+| `OKE_CLUSTER_OCID` | OKE cluster OCID |
+
+## Resource Allocation (OKE Always Free)
+
+| Component | OCPUs | Memory | Replicas |
+|-----------|-------|--------|----------|
+| chat-api | 0.5 | 1 GB | 2 |
+| notification | 0.25 | 512 MB | 1 |
+| recurring-task | 0.25 | 512 MB | 1 |
+| audit | 0.25 | 512 MB | 1 |
+| PostgreSQL | 0.5 | 2 GB | 1 |
+| Redis | 0.25 | 512 MB | 1 |
+| Kafka | 0.5 | 2 GB | 1 |
+| **Total** | **2.5** | **7.5 GB** | - |
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Next.js 15+ (App Router) |
-| Backend | Python FastAPI |
-| AI/LLM | Groq API (Llama 3.3 70B) |
-| Database | Neon Serverless PostgreSQL |
-| Container | Docker (multi-stage builds) |
-| Orchestration | Kubernetes (Minikube) |
-| Package Manager | Helm 3 |
-| AI DevOps | kubectl-ai |
-
-## Environment Variables
-
-### Backend
-
-| Variable | Description | Source |
-|----------|-------------|--------|
-| `DATABASE_URL` | PostgreSQL connection | Secret |
-| `JWT_SECRET` | JWT signing secret | Secret |
-| `GROQ_API_KEY` | Groq API key | Secret |
-| `CORS_ORIGINS` | Allowed origins | ConfigMap |
-
-### Frontend
-
-| Variable | Description | Source |
-|----------|-------------|--------|
-| `DATABASE_URL` | PostgreSQL connection | Secret |
-| `BETTER_AUTH_SECRET` | Auth secret | Secret |
-| `NEXT_PUBLIC_API_URL` | Backend API URL | ConfigMap |
-
-## Development Workflow
-
-This project uses **Spec-Driven Development (SDD)**:
-
-1. **Specify** - Define requirements in spec.md
-2. **Plan** - Create architecture in plan.md
-3. **Tasks** - Break down into tasks.md
-4. **Implement** - Execute with Claude Code
-5. **PHR** - Record prompts in history/prompts/
+| Frontend | Next.js 15+ (Vercel) |
+| API Gateway | FastAPI + Dapr |
+| Messaging | Kafka (Redpanda/Strimzi) |
+| State Store | Redis |
+| Database | PostgreSQL (Neon) |
+| Container | Docker |
+| Orchestration | Kubernetes (Minikube/OKE) |
+| Service Mesh | Dapr |
+| CI/CD | GitHub Actions |
+| Monitoring | Prometheus + Grafana |
 
 ## Project Evolution
 
 | Phase | Description | Key Features |
 |-------|-------------|--------------|
-| Phase I | Console Todo App | Python CLI, JSON storage |
-| Phase II | Full-Stack Web App | Next.js, FastAPI, PostgreSQL |
-| Phase III | AI-Native Chatbot | Groq LLM, MCP Tools, Chat UI |
-| **Phase IV** | **Kubernetes Deployment** | **Docker, Helm, Minikube** |
+| I | Console App | Python CLI, JSON storage |
+| II | Full-Stack | Next.js, FastAPI, PostgreSQL |
+| III | AI Chatbot | Groq LLM, MCP Tools |
+| IV | K8s Deploy | Docker, Helm, Minikube |
+| **V** | **Event-Driven** | **Dapr, Kafka, OKE, CI/CD** |
 
 ## Author
 
@@ -445,24 +307,3 @@ This project uses **Spec-Driven Development (SDD)**:
 ## License
 
 MIT License
-
----
-
-## Quick Reference
-
-```bash
-# Start everything
-minikube start --driver=docker --cpus=2 --memory=3500
-helm upgrade --install backend helm/backend -n todo-chatbot
-helm upgrade --install frontend helm/frontend -n todo-chatbot
-kubectl port-forward -n todo-chatbot svc/frontend 3000:3000
-
-# Stop everything
-minikube stop
-
-# Clean up
-helm uninstall backend -n todo-chatbot
-helm uninstall frontend -n todo-chatbot
-kubectl delete namespace todo-chatbot
-minikube delete
-```

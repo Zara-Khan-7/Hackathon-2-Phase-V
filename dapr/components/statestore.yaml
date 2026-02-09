@@ -1,0 +1,26 @@
+# Dapr State Store Component - Redis
+# Used for idempotency tracking and job state
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+  namespace: todo-app
+spec:
+  type: state.redis
+  version: v1
+  metadata:
+    - name: redisHost
+      value: "redis.todo-app.svc.cluster.local:6379"
+    - name: redisPassword
+      secretKeyRef:
+        name: redis-secret
+        key: password
+    # Enable actor state store for Jobs API
+    - name: actorStateStore
+      value: "true"
+    # Default TTL for state entries (24 hours)
+    - name: ttlInSeconds
+      value: "86400"
+    # Key prefix for todo app
+    - name: keyPrefix
+      value: "todo"

@@ -1,0 +1,46 @@
+# Redpanda Kafka values for Minikube local development
+# US6: Lightweight Kafka setup for local testing
+
+# Using Redpanda for simplified Kafka-compatible deployment
+image:
+  repository: docker.redpanda.com/redpandadata/redpanda
+  tag: v23.3.5
+
+resources:
+  limits:
+    cpu: 1
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 512Mi
+
+storage:
+  persistentVolume:
+    enabled: true
+    size: 5Gi
+    storageClass: standard
+
+statefulset:
+  replicas: 1
+
+config:
+  cluster:
+    auto_create_topics_enabled: true
+  tunable:
+    kafka_batch_max_bytes: 1048576
+
+listeners:
+  kafka:
+    port: 9092
+
+# Topics to create
+topics:
+  - name: task-events
+    partitions: 3
+    replicationFactor: 1
+  - name: reminders
+    partitions: 3
+    replicationFactor: 1
+  - name: task-updates
+    partitions: 3
+    replicationFactor: 1

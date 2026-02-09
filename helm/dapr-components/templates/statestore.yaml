@@ -1,0 +1,14 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: {{ .Values.statestore.name }}
+spec:
+  type: {{ .Values.statestore.type }}
+  version: v1
+  metadata:
+    - name: redisHost
+      value: "{{ .Values.statestore.host }}"
+    - name: redisPassword
+      value: ""
+    - name: actorStateStore
+      value: "false"

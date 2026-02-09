@@ -1,0 +1,24 @@
+# Default values for audit subchart
+replicaCount: 1
+
+image:
+  repository: todo-chatbot/audit-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8003
+
+resources:
+  limits:
+    cpu: 250m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+dapr:
+  enabled: true
+  appId: audit-service
+  appPort: 8003

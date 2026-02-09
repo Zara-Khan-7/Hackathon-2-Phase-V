@@ -1,0 +1,64 @@
+# Grafana standalone values
+# US8: Dashboard configuration for Todo Chatbot
+
+adminUser: admin
+adminPassword: admin  # Change in production!
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    cpu: 200m
+    memory: 512Mi
+
+persistence:
+  enabled: true
+  size: 1Gi
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server:80
+        access: proxy
+        isDefault: true
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+      - name: 'todo-chatbot'
+        orgId: 1
+        folder: 'Todo Chatbot'
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/todo-chatbot
+
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    folder: /var/lib/grafana/dashboards
+  datasources:
+    enabled: true
+    label: grafana_datasource
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false  # Enable if needed

@@ -1,0 +1,24 @@
+apiVersion: v2
+name: todo-chatbot
+description: Todo Chatbot - Event-driven microservices application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: chat-api
+    version: "1.0.0"
+    repository: "file://charts/chat-api"
+  - name: notification
+    version: "1.0.0"
+    repository: "file://charts/notification"
+  - name: recurring-task
+    version: "1.0.0"
+    repository: "file://charts/recurring-task"
+  - name: audit
+    version: "1.0.0"
+    repository: "file://charts/audit"
+
+maintainers:
+  - name: Todo Chatbot Team
+    email: team@todo-chatbot.dev

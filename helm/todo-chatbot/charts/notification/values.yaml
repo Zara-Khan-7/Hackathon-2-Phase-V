@@ -1,0 +1,24 @@
+# Default values for notification subchart
+replicaCount: 1
+
+image:
+  repository: todo-chatbot/notification-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8001
+
+resources:
+  limits:
+    cpu: 250m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+dapr:
+  enabled: true
+  appId: notification-service
+  appPort: 8001

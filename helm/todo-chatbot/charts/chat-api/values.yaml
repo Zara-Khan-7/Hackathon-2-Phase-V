@@ -1,0 +1,30 @@
+# Default values for chat-api subchart
+replicaCount: 1
+
+image:
+  repository: todo-chatbot/chat-api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+dapr:
+  enabled: true
+  appId: chat-api
+  appPort: 8000
+
+env:
+  DATABASE_URL: ""
+  JWT_SECRET: ""
+  DAPR_ENABLED: "true"
+  DAPR_PUBSUB_NAME: "pubsub"

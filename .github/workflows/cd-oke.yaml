@@ -1,0 +1,110 @@
+# CD Workflow for Oracle OKE Deployment
+# US7: Deploy to Oracle Kubernetes Engine
+
+name: CD - OKE
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  HELM_RELEASE: todo-chatbot
+  NAMESPACE: todo-chatbot
+  OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+  OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+  OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+  OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+  OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+
+jobs:
+  deploy:
+    name: Deploy to OKE
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.0
+
+      - name: Install OCI CLI
+        run: |
+          curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh | bash -s -- --accept-all-defaults
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Configure OCI CLI
+        run: |
+          mkdir -p ~/.oci
+          echo "[DEFAULT]" > ~/.oci/config
+          echo "user=$OCI_CLI_USER" >> ~/.oci/config
+          echo "tenancy=$OCI_CLI_TENANCY" >> ~/.oci/config
+          echo "fingerprint=$OCI_CLI_FINGERPRINT" >> ~/.oci/config
+          echo "region=$OCI_CLI_REGION" >> ~/.oci/config
+          echo "key_file=~/.oci/oci_api_key.pem" >> ~/.oci/config
+          echo "$OCI_CLI_KEY_CONTENT" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+
+      - name: Configure kubectl for OKE
+        run: |
+          oci ce cluster create-kubeconfig \
+            --cluster-id ${{ secrets.OKE_CLUSTER_OCID }} \
+            --file $HOME/.kube/config \
+            --region $OCI_CLI_REGION \
+            --token-version 2.0.0
+
+      - name: Create namespace
+        run: |
+          kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Dapr components
+        run: |
+          helm upgrade --install dapr-components ./helm/dapr-components \
+            --namespace $NAMESPACE \
+            --wait
+
+      - name: Build Helm dependencies
+        run: |
+          cd helm/todo-chatbot
+          helm dependency build
+
+      - name: Deploy application
+        run: |
+          helm upgrade --install $HELM_RELEASE ./helm/todo-chatbot \
+            --namespace $NAMESPACE \
+            -f ./helm/todo-chatbot/values-oke.yaml \
+            --set global.imageRegistry=ghcr.io/${{ github.repository }} \
+            --wait \
+            --timeout 10m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/$HELM_RELEASE-chat-api -n $NAMESPACE
+          kubectl get pods -n $NAMESPACE
+
+      - name: Post deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ github.event.inputs.environment || 'staging' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Namespace**: $NAMESPACE" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release**: $HELM_RELEASE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pods" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n $NAMESPACE >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

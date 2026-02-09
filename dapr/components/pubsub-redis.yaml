@@ -1,0 +1,19 @@
+# Dapr Pub/Sub Component - Redis (Local Development)
+# Lightweight alternative to Kafka for Minikube
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+  namespace: todo-chatbot
+spec:
+  type: pubsub.redis
+  version: v1
+  metadata:
+    - name: redisHost
+      value: "redis-master.todo-chatbot.svc.cluster.local:6379"
+    - name: redisPassword
+      value: ""
+    - name: consumerID
+      value: "todo-consumers"
+    - name: enableTLS
+      value: "false"

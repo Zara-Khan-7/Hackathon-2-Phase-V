@@ -1,0 +1,6 @@
+apiVersion: v2
+name: chat-api
+description: Todo Chatbot Chat API - FastAPI backend with Dapr integration
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
